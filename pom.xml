@@ -22,6 +22,12 @@
     <dependencies>
         <!-- compile -->
         <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>2.17.2</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
             <groupId>net.sf.matrixjavalib</groupId>
             <artifactId>mxlib-common</artifactId>
             <version>3.0.2</version>
