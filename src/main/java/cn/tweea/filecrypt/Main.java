@@ -10,9 +10,13 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.security.MessageDigest;
+import java.util.Arrays;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.RandomUtils;
 
 import com.fasterxml.jackson.core.PrettyPrinter;
@@ -61,10 +65,7 @@ public final class Main {
 
         plainFileName = FilenameUtils.getName(plainFileName);
         File parentFile = plainFile.getParentFile();
-
-        String cipherFileName = getCipherFileName(plainFile);
-        File cipherFile = new File(parentFile, cipherFileName);
-        writeCipherFile(plainFile, cipherFile);
+        String cipherFileName = writeCipherFile(plainFile, parentFile);
 
         FileMeta fileMeta = new FileMeta();
         fileMeta.setPlainFileName(plainFileName);
@@ -78,28 +79,36 @@ public final class Main {
             new DefaultPrettyPrinter().withSeparators(PrettyPrinter.DEFAULT_SEPARATORS.withObjectFieldValueSpacing(Separators.Spacing.AFTER)));
     }
 
-    private static String getCipherFileName(File plainFile)
+    private static String writeCipherFile(File plainFile, File parentFile)
         throws IOException {
-        try (InputStream is = IOUtils.buffer(new FileInputStream(plainFile))) {
-            return HEX.toString(CryptoMx.digest(is, CryptoMx.getMessageDigest(CryptoAlgorithm.Digest.SM3))) + ".dat";
-        }
-    }
-
-    private static void writeCipherFile(File plainFile, File cipherFile)
-        throws IOException {
-        try (InputStream is = IOUtils.buffer(new FileInputStream(plainFile)); OutputStream os = IOUtils.buffer(new FileOutputStream(cipherFile))) {
+        File tempFile = new File(parentFile, RandomStringUtils.randomAlphanumeric(10));
+        MessageDigest digest = CryptoMx.getMessageDigest(CryptoAlgorithm.Digest.SM3);
+        try (InputStream is = IOUtils.buffer(new FileInputStream(plainFile)); OutputStream os = IOUtils.buffer(new FileOutputStream(tempFile))) {
             byte[] key = RandomUtils.nextBytes(KEY_SIZE);
             os.write(key);
 
             byte[] buffer = new byte[BUFFER_SIZE];
             int read;
             while (IOUtils.EOF != (read = is.read(buffer))) {
+                if (read == BUFFER_SIZE) {
+                    CryptoMx.updateDigest(buffer, digest);
+                } else {
+                    CryptoMx.updateDigest(Arrays.copyOf(buffer, read), digest);
+                }
+
                 for (int i = 0; i < read; ++i) {
                     buffer[i] ^= key[i % KEY_SIZE];
                 }
                 os.write(buffer, 0, read);
             }
         }
+        String cipherFileName = HEX.toString(digest.digest()) + ".dat";
+        File cipherFile = new File(parentFile, cipherFileName);
+        if (cipherFile.exists()) {
+            FileUtils.delete(cipherFile);
+        }
+        FileUtils.moveFile(tempFile, cipherFile);
+        return cipherFileName;
     }
 
     private static void decrypt(String metaFileName)
