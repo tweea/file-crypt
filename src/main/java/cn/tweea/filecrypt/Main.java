@@ -15,7 +15,11 @@ import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.RandomUtils;
 
+import com.fasterxml.jackson.core.PrettyPrinter;
+import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
+import com.fasterxml.jackson.core.util.Separators;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 
 import net.matrix.security.CryptoAlgorithm;
 import net.matrix.security.CryptoMx;
@@ -70,7 +74,8 @@ public final class Main {
     }
 
     private static ObjectMapper newObjectMapper() {
-        return new ObjectMapper();
+        return new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT).setDefaultPrettyPrinter(
+            new DefaultPrettyPrinter().withSeparators(PrettyPrinter.DEFAULT_SEPARATORS.withObjectFieldValueSpacing(Separators.Spacing.AFTER)));
     }
 
     private static String getCipherFileName(File plainFile)
