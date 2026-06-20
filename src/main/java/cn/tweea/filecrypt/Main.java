@@ -130,11 +130,14 @@ public final class Main {
         String cipherFileName = fileMeta.getCipherFileName();
         File plainFile = new File(parentFile, plainFileName);
         File cipherFile = new File(parentFile, cipherFileName);
-        writePlainFile(cipherFile, plainFile);
+        if (!cipherFileName.equals(writePlainFile(cipherFile, plainFile))) {
+            throw new IllegalArgumentException("密文文件有错误");
+        }
     }
 
-    private static void writePlainFile(File cipherFile, File plainFile)
+    private static String writePlainFile(File cipherFile, File plainFile)
         throws IOException {
+        MessageDigest digest = CryptoMx.getMessageDigest(CryptoAlgorithm.Digest.SM3);
         try (InputStream is = IOUtils.buffer(new FileInputStream(cipherFile)); OutputStream os = IOUtils.buffer(new FileOutputStream(plainFile))) {
             byte[] key = new byte[KEY_SIZE];
             if (is.read(key) < KEY_SIZE) {
@@ -148,7 +151,14 @@ public final class Main {
                     buffer[i] ^= key[i % KEY_SIZE];
                 }
                 os.write(buffer, 0, read);
+
+                if (read == BUFFER_SIZE) {
+                    CryptoMx.updateDigest(buffer, digest);
+                } else {
+                    CryptoMx.updateDigest(Arrays.copyOf(buffer, read), digest);
+                }
             }
         }
+        return HEX.toString(digest.digest()) + ".dat";
     }
 }
