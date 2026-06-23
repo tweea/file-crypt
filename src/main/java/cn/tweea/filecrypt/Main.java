@@ -12,6 +12,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.security.MessageDigest;
 import java.util.Arrays;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
@@ -25,6 +26,7 @@ import com.fasterxml.jackson.core.util.Separators;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 
+import net.matrix.java.lang.ThreadMx;
 import net.matrix.security.CryptoAlgorithm;
 import net.matrix.security.CryptoMx;
 
@@ -89,6 +91,7 @@ public final class Main {
 
             byte[] buffer = new byte[BUFFER_SIZE];
             int read;
+            long size = 0;
             while (IOUtils.EOF != (read = is.read(buffer))) {
                 if (read == BUFFER_SIZE) {
                     CryptoMx.updateDigest(buffer, digest);
@@ -100,6 +103,13 @@ public final class Main {
                     buffer[i] ^= key[i % KEY_SIZE];
                 }
                 os.write(buffer, 0, read);
+
+                size += read;
+                if (size % FileUtils.ONE_GB == 0) {
+                    System.out.print("...");
+                    System.out.print(size / FileUtils.ONE_GB);
+                    ThreadMx.sleep(10, TimeUnit.SECONDS);
+                }
             }
         }
         String cipherFileName = HEX.toString(digest.digest()) + ".dat";
@@ -146,6 +156,7 @@ public final class Main {
 
             byte[] buffer = new byte[BUFFER_SIZE];
             int read;
+            long size = 0;
             while (IOUtils.EOF != (read = is.read(buffer))) {
                 for (int i = 0; i < read; ++i) {
                     buffer[i] ^= key[i % KEY_SIZE];
@@ -156,6 +167,13 @@ public final class Main {
                     CryptoMx.updateDigest(buffer, digest);
                 } else {
                     CryptoMx.updateDigest(Arrays.copyOf(buffer, read), digest);
+                }
+
+                size += read;
+                if (size % FileUtils.ONE_GB == 0) {
+                    System.out.print("...");
+                    System.out.print(size / FileUtils.ONE_GB);
+                    ThreadMx.sleep(10, TimeUnit.SECONDS);
                 }
             }
         }
